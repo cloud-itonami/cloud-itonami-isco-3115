@@ -1,0 +1,11 @@
+[{:itonami.blueprint/social-impact [:mechanical-safety :system-quality :site-documentation]
+  :itonami.blueprint/domain :engineering/mechanical
+  :itonami.blueprint/required-technologies [:robotics :identity :survey-forms :dmn :audit-ledger]
+  :itonami.blueprint/isco-08 "3115"
+  :itonami.blueprint/name "Mechanical Engineering Technicians"
+  :itonami.blueprint/governor :meng-governor
+  :itonami.blueprint/robotics true
+  :db/id -1
+  :itonami.blueprint/status :public-oss
+  :itonami.blueprint/id "cloud-itonami-isco-3115"
+  :itonami.blueprint/license "AGPL-3.0-or-later"}]

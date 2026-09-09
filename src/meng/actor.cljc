@@ -15,7 +15,18 @@
 
   The unconditional invariant: the TestAdvisor can never directly commit
   a record or dispatch a robot action the MenGGovernor refuses — every
-  commit-record! call is gated behind `:decide`."
+  commit-record! call is gated behind `:decide`.
+
+  The audit invariant: **every run writes its decision before anything
+  can interrupt it.** `:decide` runs to completion in the superstep
+  before `interrupt-before` stops the graph at `:request-approval`, so a
+  hazard escalation that is never signed off still leaves a `:decided`
+  entry naming the disposition it is waiting on. Appending at
+  `:request-approval` instead would record nothing until a human
+  resumed the thread, which is precisely backwards — the pending state
+  is the one an auditor most needs to see. Measured before this rule
+  existed: an escalated hazard left the ledger EMPTY (the measurement
+  is in `meng.ledger`'s docstring)."
   (:require [langgraph.graph :as g]
             [langgraph.checkpoint :as cp]
             [meng.advisor :as advisor]
@@ -33,6 +44,7 @@
        {:channels
         {:request     {:default nil}
          :context     {:default nil}
+         :run-id      {:default nil}
          :proposal    {:default nil}
          :verdict     {:default nil}
          :disposition {:default nil}
@@ -50,24 +62,46 @@
                        {:verdict v
                         :audit [{:node :govern :verdict v}]})))
       (g/add-node :decide
-                   (fn [{:keys [verdict]}]
-                     {:disposition (cond
-                                     (:hard? verdict) :hold
-                                     (:escalate? verdict) :request-approval
-                                     :else :commit)}))
-      (g/add-node :request-approval (fn [s] s))
+                   (fn [{:keys [run-id verdict proposal]}]
+                     (let [disposition (cond
+                                         (:hard? verdict) :hold
+                                         (:escalate? verdict) :request-approval
+                                         :else :commit)]
+                       ;; Written HERE, not at :request-approval — this
+                       ;; superstep completes before interrupt-before stops
+                       ;; the graph, so an escalation that is never signed
+                       ;; off is still on the record.
+                       (store/append-ledger! store run-id :decided
+                                             {:disposition disposition
+                                              :op (:op proposal)
+                                              :verdict verdict})
+                       {:disposition disposition
+                        :audit [{:node :decide :disposition disposition}]})))
+      (g/add-node :request-approval
+                   (fn [{:keys [run-id proposal]}]
+                     ;; interrupt-before stops the graph BEFORE this node,
+                     ;; so reaching it means a human resumed the thread.
+                     ;; That resumption IS the sign-off, and this entry is
+                     ;; the only place it is recorded.
+                     (store/append-ledger! store run-id :approved
+                                           {:op (:op proposal)})
+                     {:audit [{:node :request-approval :approved? true}]}))
       (g/add-node :commit
-                   (fn [{:keys [request proposal]}]
+                   (fn [{:keys [run-id request proposal]}]
                      (let [record {:project-id (:project-id request)
                                     :op (:op proposal)
                                     :payload proposal}]
                        (store/commit-record! store record)
-                       (store/append-ledger! store {:disposition :commit :record record})
+                       (store/append-ledger! store run-id :committed
+                                             {:op (:op proposal) :record record})
                        {:record record
                         :audit [{:node :commit :record record}]})))
       (g/add-node :hold
-                   (fn [{:keys [verdict]}]
-                     (store/append-ledger! store {:disposition :hold :verdict verdict})
+                   (fn [{:keys [run-id verdict proposal]}]
+                     (store/append-ledger! store run-id :held
+                                           {:op (:op proposal)
+                                            :violations (:violations verdict)
+                                            :verdict verdict})
                      {:audit [{:node :hold :verdict verdict}]}))
       (g/set-entry-point :intake)
       (g/add-edge :intake :advise)
@@ -91,7 +125,8 @@
   `thread-id` scopes checkpointing for resume after human approval. Returns
   the full run result: `{:state .. :events .. :status :done|:interrupted :frontier ..}`."
   [graph request context thread-id]
-  (g/run* graph {:request request :context context} {:thread-id thread-id}))
+  (g/run* graph {:request request :context context :run-id thread-id}
+          {:thread-id thread-id}))
 
 (defn approve!
   "Human-in-the-loop resume: the interrupted `:request-approval` node

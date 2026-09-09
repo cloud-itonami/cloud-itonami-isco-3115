@@ -17,14 +17,24 @@
   HARD invariants (:hard? true, ALWAYS :hold, never overridable):
     1. project provenance  — the request's project must be registered.
     2. no-actuation         — proposal :effect must be :propose.
+    3. declared operation   — the proposal's :op must be in
+       `meng.operation/catalog`. Measured before this rule existed:
+       `:op :decommission-the-plant` committed at confidence 0.95,
+       because nothing asked whether the op meant anything. It is a HOLD
+       rather than an escalation on purpose — an operation whose meaning
+       is undeclared cannot be put in front of a human as \"approve
+       this?\", since there is nothing to approve.
   ESCALATION invariants (:escalate? true, ALWAYS human sign-off, per the
   README robotics-premise: mechanical hazards always require human sign-off):
-    3. :op :flag-mechanical-hazard.
-    4. low confidence (< `confidence-floor`)."
-  (:require [meng.store :as store]))
+    4. an op the catalog declares `:escalates?` (today
+       `:flag-mechanical-hazard`). The property lives in
+       `meng.operation` rather than in a private set here, so the rule
+       and the fact it applies cannot drift apart.
+    5. low confidence (< `confidence-floor`)."
+  (:require [meng.operation :as operation]
+            [meng.store :as store]))
 
 (def confidence-floor 0.6)
-(def ^:private escalating-ops #{:flag-mechanical-hazard})
 
 (defn- hard-violations [{:keys [proposal]} project-record]
   (cond-> []
@@ -32,7 +42,12 @@
     (conj {:rule :no-project :detail "未登録 project"})
 
     (not= :propose (:effect proposal))
-    (conj {:rule :no-actuation :detail "effect は :propose のみ許可（直接書込禁止）"})))
+    (conj {:rule :no-actuation :detail "effect は :propose のみ許可（直接書込禁止）"})
+
+    (not (operation/known? (:op proposal)))
+    (conj {:rule :undeclared-operation
+           :detail (str "未宣言の op: " (pr-str (:op proposal))
+                        "（meng.operation/catalog に無い）")})))
 
 (defn check
   "Assess a proposal against `request`/`context`/`proposal` and a
@@ -44,7 +59,7 @@
         hard? (boolean (seq hard))
         conf (or (:confidence proposal) 0.0)
         low? (< conf confidence-floor)
-        risky-op? (contains? escalating-ops (:op proposal))]
+        risky-op? (operation/escalating? (:op proposal))]
     {:ok? (and (not hard?) (not low?) (not risky-op?))
      :violations hard
      :confidence conf

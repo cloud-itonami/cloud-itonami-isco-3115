@@ -62,6 +62,18 @@ human-in-the-loop interrupt/resume via checkpointing.
                                            +-> :hold               (:hard? true)
 ```
 
+- `src/meng/operation.cljc` — the declared vocabulary of operations the
+  actor may perform, and which of them always require human sign-off.
+  The governor hard-holds an `:op` this catalog does not declare. Before
+  this existed the vocabulary lived in a docstring and bound nothing:
+  `:op :decommission-the-plant` committed at confidence 0.95, and
+  `:op nil` threw inside the advisor before the governor ever saw it.
+- `src/meng/ledger.cljc` — typed, sequenced audit entries plus `runs`,
+  `unresolved` and `audit` over them. Before this existed a hazard
+  escalated and never signed off appended **nothing**, and a record
+  committed after human sign-off was byte-identical to one committed
+  with no human involved. Both states are now distinguishable, and
+  `unresolved` answers "what is waiting on a signature".
 - `src/meng/store.cljc` — `Store` protocol + `MemStore`:
   registered mechanical projects/sites, committed test/inspection records, an append-only audit ledger.
 - `src/meng/advisor.cljc` — `Advisor` protocol; `mock-advisor`
@@ -71,14 +83,19 @@ human-in-the-loop interrupt/resume via checkpointing.
   failures always yield `confidence 0.0` (forces escalation, never fabricated confidence).
 - `src/meng/governor.cljc` — `MenGGovernor/check`: a pure function,
   wired as its own `:govern` node. Hard invariants (unregistered project,
-  a proposal whose `:effect` isn't `:propose`) always route to `:hold`.
+  a proposal whose `:effect` isn't `:propose`, an `:op` outside
+  `meng.operation/catalog`) always route to `:hold`.
   Escalation invariants (`:flag-mechanical-hazard` or low advisor confidence)
   always route to `:request-approval` — an `interrupt-before` node that the
   graph checkpoints and only resumes on explicit human approval (`actor/approve!`),
   matching the README's robotics-premise statement that mechanical hazards
   always require human sign-off.
 - `src/meng/actor.cljc` — `build-graph`, `run-request!`, `approve!`:
-  the `langgraph.graph/state-graph` wiring itself.
+  the `langgraph.graph/state-graph` wiring itself. `:decide` writes its
+  disposition to the ledger **before** `interrupt-before` can stop the
+  graph, so an escalation nobody has signed off yet is still on the
+  record; `:request-approval` runs only on resume, so reaching it is
+  what records the human sign-off.
 
 ```bash
 clojure -M:test

@@ -12,8 +12,15 @@
     record   — a committed test/inspection record under a project
                (mechanical test data, inspection log, site visit note) —
                written ONLY via commit-record!, never mutated in place
-    ledger   — an append-only audit trail of every proposal/verdict/
-               disposition, regardless of outcome (commit or hold)")
+    ledger   — an append-only audit trail of every decision and of every
+               act that followed one, regardless of outcome. Entries are
+               built by `meng.ledger/append`, which types them and assigns
+               their sequence, so a caller can neither append an untyped
+               map nor choose its own position. This was a bare vector of
+               whatever the graph handed it, and an escalation awaiting
+               human sign-off appended nothing at all — `meng.ledger`'s
+               docstring carries the measurement."
+  (:require [meng.ledger :as led]))
 
 (defprotocol Store
   (project [s project-id])
@@ -21,7 +28,8 @@
   (ledger [s])
   (register-project! [s project])
   (commit-record! [s record])
-  (append-ledger! [s fact]))
+  (append-ledger! [s run-id type fact]
+    "Append a typed `meng.ledger` entry for graph thread `run-id`."))
 
 (defrecord MemStore [a]
   Store
@@ -32,8 +40,8 @@
     (swap! a assoc-in [:projects (:project-id project)] project) s)
   (commit-record! [s record]
     (swap! a update :records (fnil conj []) record) s)
-  (append-ledger! [s fact]
-    (swap! a update :ledger (fnil conj []) fact) s))
+  (append-ledger! [s run-id type fact]
+    (swap! a update :ledger #(led/append (or % []) run-id type fact)) s))
 
 (defn mem-store
   ([] (mem-store {}))

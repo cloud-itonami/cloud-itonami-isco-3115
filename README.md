@@ -62,26 +62,26 @@ human-in-the-loop interrupt/resume via checkpointing.
                                            +-> :hold               (:hard? true)
 ```
 
-- `src/meng/operation.cljc` — the declared vocabulary of operations the
+- `src/meng/operation.kotoba` — the declared vocabulary of operations the
   actor may perform, and which of them always require human sign-off.
   The governor hard-holds an `:op` this catalog does not declare. Before
   this existed the vocabulary lived in a docstring and bound nothing:
   `:op :decommission-the-plant` committed at confidence 0.95, and
   `:op nil` threw inside the advisor before the governor ever saw it.
-- `src/meng/ledger.cljc` — typed, sequenced audit entries plus `runs`,
+- `src/meng/ledger.kotoba` — typed, sequenced audit entries plus `runs`,
   `unresolved` and `audit` over them. Before this existed a hazard
   escalated and never signed off appended **nothing**, and a record
   committed after human sign-off was byte-identical to one committed
   with no human involved. Both states are now distinguishable, and
   `unresolved` answers "what is waiting on a signature".
-- `src/meng/store.cljc` — `Store` protocol + `MemStore`:
+- `src/meng/store.kotoba` — `Store` protocol + `MemStore`:
   registered mechanical projects/sites, committed test/inspection records, an append-only audit ledger.
-- `src/meng/advisor.cljc` — `Advisor` protocol; `mock-advisor`
+- `src/meng/advisor.kotoba` — `Advisor` protocol; `mock-advisor`
   (deterministic, default) proposes a test/inspection operation from a request; `llm-advisor`
   wraps a `langchain.model/ChatModel` — either way the advisor only ever
   produces a `:propose`-effect proposal, never a committed record, and LLM parse
   failures always yield `confidence 0.0` (forces escalation, never fabricated confidence).
-- `src/meng/governor.cljc` — `MenGGovernor/check`: a pure function,
+- `src/meng/governor.kotoba` — `MenGGovernor/check`: a pure function,
   wired as its own `:govern` node. Hard invariants (unregistered project,
   a proposal whose `:effect` isn't `:propose`, an `:op` outside
   `meng.operation/catalog`) always route to `:hold`.
@@ -90,7 +90,7 @@ human-in-the-loop interrupt/resume via checkpointing.
   graph checkpoints and only resumes on explicit human approval (`actor/approve!`),
   matching the README's robotics-premise statement that mechanical hazards
   always require human sign-off.
-- `src/meng/actor.cljc` — `build-graph`, `run-request!`, `approve!`:
+- `src/meng/actor.kotoba` — `build-graph`, `run-request!`, `approve!`:
   the `langgraph.graph/state-graph` wiring itself. `:decide` writes its
   disposition to the ledger **before** `interrupt-before` can stop the
   graph, so an escalation nobody has signed off yet is still on the

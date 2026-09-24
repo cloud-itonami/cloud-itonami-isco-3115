@@ -1,0 +1,31 @@
+;; What this vertical's robot physically does, declared for
+;; kotoba.robotics.process (kotoba-lang/robotics). `kbb -M:physics` runs it.
+;;
+;; README "Robotics premise": a mechanical test/inspection robot performs
+;; mechanical test data recording, inspection logging and site documentation
+;; for mechanical engineering technicians (ISCO 3115). Its physical work is
+;; loading specimens into the grips of a tensile machine and running the
+;; tensile test on a 10 mm round structural-steel bar.
+;;
+;; Every number without a cited source is marked `estimate` in its :basis.
+;; Replacing an estimate with a sourced value is this bot's growth work.
+{:physics/schema "itonami.physical-ai.spec.v1"
+ :repo "cloud-itonami/cloud-itonami-isco-3115"
+ :cases
+ [{:id :specimen-into-grips
+   :kind :manipulator
+   :procedure "arm lifts a specimen (or a grip insert) from the rack and holds it up into the upper grip of the tensile machine"
+   :params {:l1-m 0.45 :l2-m 0.40 :m1-kg 4.0 :m2-kg 3.0
+            :from [0.55 0.05] :to [0.30 0.65] :duration-s 2.0 :steps 400}
+   :sweep {:param :payload-kg :values [0.5 1.0 2.0 4.0 6.0]}
+   :quantity :peak-tau1-nm
+   :limit {:max 45.0 :basis "estimate: continuous shoulder torque of a light collaborative arm (~5 kg payload class) at this reach"}
+   :boundary {:lo 0.1 :hi 20.0}}
+  {:id :round-bar-tensile-test
+   :kind :material
+   :procedure "tensile machine ramps load on a 10 mm round bar (78.5 mm2) of structural steel with 355 MPa yield"
+   :params {:area-m2 7.85e-5 :yield-stress-pa 355.0e6 :youngs-modulus-pa 205.0e9 :hardening-pa 1.5e9}
+   :sweep {:param :max-force-n :values [15000.0 20000.0 25000.0 28000.0 32000.0]}
+   :quantity :final-strain
+   :limit {:max 0.002 :basis "estimate: 0.2 % strain (the Rp0.2 offset convention) taken as the line a proof load must stay under"}
+   :boundary {:lo 5000.0 :hi 40000.0}}]}

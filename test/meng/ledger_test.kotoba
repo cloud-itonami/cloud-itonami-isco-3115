@@ -68,7 +68,7 @@
     (is (= #{"b"} (led/unresolved entries)))))
 
 ;; --- audit reports counts, and each problem kind at least once -------------
-;; CLAUDE.md: その検査は、自分が名乗っている理由で拒否したことがあるか。
+;; AGENTS.md: その検査は、自分が名乗っている理由で拒否したことがあるか。
 ;; Each case below asserts the SPECIFIC :kind, so a check that fires for
 ;; some other reason cannot be counted as this one discriminating.
 

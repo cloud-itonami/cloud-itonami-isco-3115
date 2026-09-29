@@ -123,7 +123,7 @@
                    " but the governor said " (boolean (:escalate? v)))))))))
 
 ;; --- the confidence floor is a boundary, so put an input exactly on it ------
-;; CLAUDE.md: 比較を持つ検査には、必ず境界ちょうどの入力を 1 つ置く。
+;; AGENTS.md: 比較を持つ検査には、必ず境界ちょうどの入力を 1 つ置く。
 ;; Without this case, flipping `<` to `<=` in the governor leaves the suite green.
 
 (deftest confidence-exactly-at-the-floor-does-not-escalate

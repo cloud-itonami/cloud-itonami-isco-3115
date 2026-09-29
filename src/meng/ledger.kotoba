@@ -1,7 +1,7 @@
 (ns meng.ledger
   "The append-only audit trail for the ISCO-08 3115 mechanical
   engineering technician actor (itonami actor pattern, ADR-2607011000 /
-  CLAUDE.md Actors section).
+  AGENTS.md Actors section).
 
   `meng.store`'s docstring called the ledger \"an append-only audit trail
   of every proposal/verdict/disposition, regardless of outcome\". Measured
@@ -13,7 +13,7 @@
       C  hazard escalated,
          human signed off         -> [{:disposition :commit  :record {..}}]
 
-  Two holes, both of the shape CLAUDE.md names as `「飛ばした」と
+  Two holes, both of the shape AGENTS.md names as `「飛ばした」と
   「合格した」が出力で区別できるか`:
 
     B  A mechanical hazard was raised, the graph interrupted for human

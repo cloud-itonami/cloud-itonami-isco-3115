@@ -1,7 +1,7 @@
 (ns meng.operation
   "The declared vocabulary of operations the ISCO-08 3115 mechanical
   engineering technician actor may perform (itonami actor pattern,
-  ADR-2607011000 / CLAUDE.md Actors section).
+  ADR-2607011000 / AGENTS.md Actors section).
 
   Before this namespace the vocabulary existed in three places and was
   binding in none of them: `meng.advisor`'s docstring listed four ops as
